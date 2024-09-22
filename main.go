@@ -16,7 +16,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	bot.Debug = !config.Config.Production
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 

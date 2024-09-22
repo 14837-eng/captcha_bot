@@ -23,6 +23,7 @@ type Configuration struct {
 	KickFailMessage              string
 	KickSuccessMessage           string
 	CustomEmojiList              []string
+	Production                   bool
 }
 
 var Config Configuration
@@ -68,4 +69,10 @@ func Init() {
 	if customEmojiList != "" {
 		Config.CustomEmojiList = strings.Split(customEmojiList, ",")
 	}
+
+	production, err := strconv.ParseBool(os.Getenv("PRODUCTION"))
+	if err != nil {
+		log.Fatal("PRODUCTION must be a valid boolean (true/false) in .env file")
+	}
+	Config.Production = production
 }
