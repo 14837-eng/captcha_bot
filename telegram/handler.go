@@ -42,6 +42,11 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		// Обработка новых участников
 		if update.Message.NewChatMembers != nil {
 			for _, newUser := range update.Message.NewChatMembers {
+				// Проверяем, что новый пользователь не является самим ботом
+				if newUser.ID == bot.Self.ID {
+					continue // Пропускаем обработку, если это бот
+				}
+
 				captcha := generateCaptcha(config.Config.EmojiCount)
 				userCaptchas[newUser.ID] = captchaInfo{
 					captcha:   captcha,
