@@ -167,7 +167,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 						bot.Request(unrestrictChatMember)
 
 						// Удаляем сообщение с кнопками
-						deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, userCaptchas[userID].messageID)
+						deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
 						bot.Request(deleteMsg)
 
 						callbackConfig := tgbotapi.CallbackConfig{
