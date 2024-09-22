@@ -35,24 +35,48 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				// Создаем клавиатуру с эмодзи
 				var keyboard [][]tgbotapi.InlineKeyboardButton
 				buttonCount := config.Config.EmojiButtonCount
+				if buttonCount < config.Config.EmojiCount {
+					buttonCount = config.Config.EmojiCount
+				}
 				if buttonCount > len(emojiList) {
 					buttonCount = len(emojiList)
 				}
-				shuffledEmojis := make([]string, len(emojiList))
-				copy(shuffledEmojis, emojiList)
-				rand.Shuffle(len(shuffledEmojis), func(i, j int) {
-					shuffledEmojis[i], shuffledEmojis[j] = shuffledEmojis[j], shuffledEmojis[i]
+
+				// Создаем список эмодзи для кнопок, начиная с эмодзи из капчи
+				buttonEmojis := []string{}
+				for _, emoji := range captcha {
+					buttonEmojis = append(buttonEmojis, string(emoji))
+				}
+
+				// Добавляем случайные эмодзи, пока не достигнем нужного количества кнопок
+				remainingEmojis := make([]string, len(emojiList))
+				copy(remainingEmojis, emojiList)
+				rand.Shuffle(len(remainingEmojis), func(i, j int) {
+					remainingEmojis[i], remainingEmojis[j] = remainingEmojis[j], remainingEmojis[i]
+				})
+
+				for _, emoji := range remainingEmojis {
+					if len(buttonEmojis) >= buttonCount {
+						break
+					}
+					if !strings.Contains(captcha, emoji) {
+						buttonEmojis = append(buttonEmojis, emoji)
+					}
+				}
+
+				// Перемешиваем список эмодзи для кнопок
+				rand.Shuffle(len(buttonEmojis), func(i, j int) {
+					buttonEmojis[i], buttonEmojis[j] = buttonEmojis[j], buttonEmojis[i]
 				})
 
 				// Располагаем кнопки горизонтально, максимум 5 кнопок в ряду
 				buttonsPerRow := 5
 				var row []tgbotapi.InlineKeyboardButton
-				for i := 0; i < buttonCount; i++ {
-					emoji := shuffledEmojis[i]
+				for i, emoji := range buttonEmojis {
 					button := tgbotapi.NewInlineKeyboardButtonData(emoji, fmt.Sprintf("captcha:%d:%s", newUser.ID, emoji))
 					row = append(row, button)
 
-					if len(row) == buttonsPerRow || i == buttonCount-1 {
+					if len(row) == buttonsPerRow || i == len(buttonEmojis)-1 {
 						keyboard = append(keyboard, row)
 						row = []tgbotapi.InlineKeyboardButton{}
 					}
