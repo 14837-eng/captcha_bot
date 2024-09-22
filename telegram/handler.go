@@ -3,6 +3,7 @@ package telegram
 import (
 	"fmt"
 	"log"
+	"math/rand"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -34,7 +35,7 @@ func (h *Handler) handleNewChatMembers(message *tgbotapi.Message) {
 		}
 
 		h.restrictNewMember(message.Chat.ID, &newMember)
-		h.sendRestrictMessage(message.Chat.ID, &newMember)
+		h.sendCaptchaMessage(message.Chat.ID, &newMember)
 	}
 }
 
@@ -64,7 +65,24 @@ func (h *Handler) restrictNewMember(chatID int64, member *tgbotapi.User) {
 	}
 }
 
-func (h *Handler) sendRestrictMessage(chatID int64, member *tgbotapi.User) {
-	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Пользователь @%s был ограничен в правах отправки сообщений.", member.UserName))
+func (h *Handler) sendCaptchaMessage(chatID int64, member *tgbotapi.User) {
+	keyboard := h.createEmojiKeyboard()
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("@%s, вы были лишены права голоса. Чтобы продолжить, вам нужно пройти капчу.", member.UserName))
+	msg.ReplyMarkup = keyboard
 	h.bot.Send(msg)
+}
+
+func (h *Handler) createEmojiKeyboard() tgbotapi.InlineKeyboardMarkup {
+	emojis := []string{"😀", "😎", "🤔", "🎉", "🌈", "🍕", "🐱", "🚀", "🌺"}
+	rand.Shuffle(len(emojis), func(i, j int) { emojis[i], emojis[j] = emojis[j], emojis[i] })
+
+	var keyboard [][]tgbotapi.InlineKeyboardButton
+	row := []tgbotapi.InlineKeyboardButton{}
+	for i := 0; i < 3; i++ {
+		button := tgbotapi.NewInlineKeyboardButtonData(emojis[i], fmt.Sprintf("captcha_%d", i))
+		row = append(row, button)
+	}
+	keyboard = append(keyboard, row)
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
 }
