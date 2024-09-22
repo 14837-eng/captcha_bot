@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/14837-eng/captcha_bot/config"
+	"github.com/14837-eng/captcha_bot/telegram"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/your-username/your-project/config"
-	"github.com/your-username/your-project/telegram"
 )
 
 func main() {

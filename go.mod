@@ -1,4 +1,4 @@
-module github.com/your-username/your-project
+module github.com/14837-eng/captcha_bot
 
 go 1.16
 

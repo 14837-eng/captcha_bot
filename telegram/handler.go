@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/14837-eng/captcha_bot/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/your-username/your-project/config"
 )
 
 var (
