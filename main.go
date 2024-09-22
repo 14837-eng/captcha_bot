@@ -6,6 +6,9 @@ import (
 	"os"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"captcha-bot/telegram"
+
 	"github.com/joho/godotenv"
 )
 
@@ -32,7 +35,20 @@ func main() {
 
 	log.Printf("Авторизован на аккаунте %s", bot.Self.UserName)
 
-	// Здесь вы можете добавить дальнейшую логику работы с ботом
+	// Настройка получения обновлений
+	updateConfig := tgbotapi.NewUpdate(0)
+	updateConfig.Timeout = 60
+
+	// Получение канала обновлений
+	updates := bot.GetUpdatesChan(updateConfig)
 
 	fmt.Println("Бот успешно запущен!")
+
+	// Создание обработчика событий
+	handler := telegram.NewHandler(bot)
+
+	// Обработка обновлений
+	for update := range updates {
+		handler.HandleUpdate(update)
+	}
 }
