@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ var (
 type captchaInfo struct {
 	captcha   string
 	startTime time.Time
+	messageID int
 }
 
 func getEmojiList() []string {
@@ -106,7 +108,17 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(config.Config.WelcomeMessage, newUser.FirstName, config.Config.CaptchaTimeoutMinutes/time.Minute, captcha))
 				msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-				bot.Send(msg)
+				sentMsg, err := bot.Send(msg)
+				if err != nil {
+					log.Printf("Failed to send captcha message: %v", err)
+					return
+				}
+
+				userCaptchas[newUser.ID] = captchaInfo{
+					captcha:   captcha,
+					startTime: time.Now(),
+					messageID: sentMsg.MessageID,
+				}
 
 				// Ограничиваем права пользователя
 				restrictChatMember := tgbotapi.RestrictChatMemberConfig{
@@ -121,7 +133,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				bot.Request(restrictChatMember)
 
 				// Запускаем горутину для проверки таймаута
-				go checkCaptchaTimeout(bot, update.Message.Chat.ID, newUser.ID)
+				go checkCaptchaTimeout(bot, update.Message.Chat.ID, newUser.ID, sentMsg.MessageID)
 			}
 		}
 	} else if update.CallbackQuery != nil {
@@ -154,7 +166,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 						bot.Request(unrestrictChatMember)
 
 						// Удаляем сообщение с кнопками
-						deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+						deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, userCaptchas[userID].messageID)
 						bot.Request(deleteMsg)
 
 						callbackConfig := tgbotapi.CallbackConfig{
@@ -186,12 +198,19 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	}
 }
 
-func checkCaptchaTimeout(bot *tgbotapi.BotAPI, chatID int64, userID int64) {
+func checkCaptchaTimeout(bot *tgbotapi.BotAPI, chatID int64, userID int64, messageID int) {
 	time.Sleep(config.Config.CaptchaTimeoutMinutes)
 
 	if _, ok := userCaptchas[userID]; ok {
 		// Если капча все еще не пройдена, кикаем пользователя
 		delete(userCaptchas, userID)
+
+		// Удаляем сообщение с кнопками капчи
+		deleteMsg := tgbotapi.NewDeleteMessage(chatID, messageID)
+		_, err := bot.Request(deleteMsg)
+		if err != nil {
+			log.Printf("Failed to delete captcha message: %v", err)
+		}
 
 		kickChatMember := tgbotapi.KickChatMemberConfig{
 			ChatMemberConfig: tgbotapi.ChatMemberConfig{
@@ -200,7 +219,7 @@ func checkCaptchaTimeout(bot *tgbotapi.BotAPI, chatID int64, userID int64) {
 			},
 		}
 
-		_, err := bot.Request(kickChatMember)
+		_, err = bot.Request(kickChatMember)
 		if err != nil {
 			// Если не удалось кикнуть пользователя, отправляем сообщение
 			bot.Send(tgbotapi.NewMessage(chatID, config.Config.KickFailMessage))
