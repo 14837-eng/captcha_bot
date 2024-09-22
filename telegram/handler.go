@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	emojiList    = []string{"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳"}
-	userCaptchas = make(map[int64]captchaInfo)
+	defaultEmojiList = []string{"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳"}
+	userCaptchas     = make(map[int64]captchaInfo)
 )
 
 type captchaInfo struct {
@@ -20,8 +20,16 @@ type captchaInfo struct {
 	startTime time.Time
 }
 
+func getEmojiList() []string {
+	if len(config.Config.CustomEmojiList) > 0 {
+		return config.Config.CustomEmojiList
+	}
+	return defaultEmojiList
+}
+
 func generateCaptcha(count int) string {
 	rand.Seed(time.Now().UnixNano())
+	emojiList := getEmojiList()
 	captcha := ""
 	for i := 0; i < count; i++ {
 		captcha += emojiList[rand.Intn(len(emojiList))]
@@ -46,6 +54,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				if buttonCount < config.Config.EmojiCount {
 					buttonCount = config.Config.EmojiCount
 				}
+				emojiList := getEmojiList()
 				if buttonCount > len(emojiList) {
 					buttonCount = len(emojiList)
 				}

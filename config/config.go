@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -21,6 +22,7 @@ type Configuration struct {
 	CaptchaPassedAnnouncement    string
 	KickFailMessage              string
 	KickSuccessMessage           string
+	CustomEmojiList              []string
 }
 
 var Config Configuration
@@ -61,4 +63,9 @@ func Init() {
 	Config.CaptchaPassedAnnouncement = os.Getenv("CAPTCHA_PASSED_ANNOUNCEMENT")
 	Config.KickFailMessage = os.Getenv("KICK_FAIL_MESSAGE")
 	Config.KickSuccessMessage = os.Getenv("KICK_SUCCESS_MESSAGE")
+
+	customEmojiList := os.Getenv("CUSTOM_EMOJI_LIST")
+	if customEmojiList != "" {
+		Config.CustomEmojiList = strings.Split(customEmojiList, ",")
+	}
 }
