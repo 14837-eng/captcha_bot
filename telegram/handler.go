@@ -148,6 +148,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					userCaptchas[userID] = captchaInfo{
 						captcha:   currentCaptcha.captcha[len(clickedEmoji):],
 						startTime: currentCaptcha.startTime,
+						messageID: currentCaptcha.messageID,
 					}
 					if userCaptchas[userID].captcha == "" {
 						// Капча пройдена успешно
