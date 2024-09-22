@@ -1,44 +1,41 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 )
 
-type Config struct {
-	TelegramBotToken string `validate:"required"`
-	EmojiCount       int    `validate:"required,min=1,max=10"`
+type Configuration struct {
+	TelegramBotToken string
+	EmojiCount       int
+	EmojiButtonCount int
 }
 
-func LoadConfig() (*Config, error) {
+var Config Configuration
+
+func Init() {
 	err := godotenv.Load()
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при загрузке файла .env: %w", err)
+		log.Fatal("Error loading .env file")
 	}
 
-	config := &Config{
-		TelegramBotToken: os.Getenv("TELEGRAM_BOT_TOKEN"),
-		EmojiCount:       3, // значение по умолчанию
+	Config.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
+	if Config.TelegramBotToken == "" {
+		log.Fatal("TELEGRAM_BOT_TOKEN is not set in .env file")
 	}
 
-	emojiCountStr := os.Getenv("EMOJI_COUNT")
-	if emojiCountStr != "" {
-		emojiCount, err := strconv.Atoi(emojiCountStr)
-		if err != nil {
-			return nil, fmt.Errorf("неверное значение EMOJI_COUNT: %w", err)
-		}
-		config.EmojiCount = emojiCount
-	}
-
-	validate := validator.New()
-	err = validate.Struct(config)
+	emojiCount, err := strconv.Atoi(os.Getenv("EMOJI_COUNT"))
 	if err != nil {
-		return nil, fmt.Errorf("ошибка валидации конфигурации: %w", err)
+		log.Fatal("EMOJI_COUNT must be a valid integer in .env file")
 	}
+	Config.EmojiCount = emojiCount
 
-	return config, nil
+	emojiButtonCount, err := strconv.Atoi(os.Getenv("EMOJI_BUTTON_COUNT"))
+	if err != nil {
+		log.Fatal("EMOJI_BUTTON_COUNT must be a valid integer in .env file")
+	}
+	Config.EmojiButtonCount = emojiButtonCount
 }
