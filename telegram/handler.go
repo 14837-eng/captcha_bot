@@ -43,11 +43,19 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				rand.Shuffle(len(shuffledEmojis), func(i, j int) {
 					shuffledEmojis[i], shuffledEmojis[j] = shuffledEmojis[j], shuffledEmojis[i]
 				})
+
+				// Располагаем кнопки горизонтально, максимум 5 кнопок в ряду
+				buttonsPerRow := 5
+				var row []tgbotapi.InlineKeyboardButton
 				for i := 0; i < buttonCount; i++ {
 					emoji := shuffledEmojis[i]
-					keyboard = append(keyboard, []tgbotapi.InlineKeyboardButton{
-						tgbotapi.NewInlineKeyboardButtonData(emoji, fmt.Sprintf("captcha:%d:%s", newUser.ID, emoji)),
-					})
+					button := tgbotapi.NewInlineKeyboardButtonData(emoji, fmt.Sprintf("captcha:%d:%s", newUser.ID, emoji))
+					row = append(row, button)
+
+					if len(row) == buttonsPerRow || i == buttonCount-1 {
+						keyboard = append(keyboard, row)
+						row = []tgbotapi.InlineKeyboardButton{}
+					}
 				}
 
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Добро пожаловать, %s! Пожалуйста, введите следующую капчу, нажимая на кнопки в правильном порядке:\n%s", newUser.FirstName, captcha))
