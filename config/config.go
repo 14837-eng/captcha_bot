@@ -4,14 +4,23 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Configuration struct {
-	TelegramBotToken string
-	EmojiCount       int
-	EmojiButtonCount int
+	TelegramBotToken             string
+	EmojiCount                   int
+	EmojiButtonCount             int
+	CaptchaTimeoutMinutes        time.Duration
+	WelcomeMessage               string
+	CaptchaSuccessMessage        string
+	CaptchaPartialSuccessMessage string
+	CaptchaFailMessage           string
+	CaptchaPassedAnnouncement    string
+	KickFailMessage              string
+	KickSuccessMessage           string
 }
 
 var Config Configuration
@@ -38,4 +47,18 @@ func Init() {
 		log.Fatal("EMOJI_BUTTON_COUNT must be a valid integer in .env file")
 	}
 	Config.EmojiButtonCount = emojiButtonCount
+
+	captchaTimeoutMinutes, err := strconv.Atoi(os.Getenv("CAPTCHA_TIMEOUT_MINUTES"))
+	if err != nil {
+		log.Fatal("CAPTCHA_TIMEOUT_MINUTES must be a valid integer in .env file")
+	}
+	Config.CaptchaTimeoutMinutes = time.Duration(captchaTimeoutMinutes) * time.Minute
+
+	Config.WelcomeMessage = os.Getenv("WELCOME_MESSAGE")
+	Config.CaptchaSuccessMessage = os.Getenv("CAPTCHA_SUCCESS_MESSAGE")
+	Config.CaptchaPartialSuccessMessage = os.Getenv("CAPTCHA_PARTIAL_SUCCESS_MESSAGE")
+	Config.CaptchaFailMessage = os.Getenv("CAPTCHA_FAIL_MESSAGE")
+	Config.CaptchaPassedAnnouncement = os.Getenv("CAPTCHA_PASSED_ANNOUNCEMENT")
+	Config.KickFailMessage = os.Getenv("KICK_FAIL_MESSAGE")
+	Config.KickSuccessMessage = os.Getenv("KICK_SUCCESS_MESSAGE")
 }

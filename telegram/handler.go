@@ -12,8 +12,13 @@ import (
 
 var (
 	emojiList    = []string{"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳"}
-	userCaptchas = make(map[int64]string)
+	userCaptchas = make(map[int64]captchaInfo)
 )
+
+type captchaInfo struct {
+	captcha   string
+	startTime time.Time
+}
 
 func generateCaptcha(count int) string {
 	rand.Seed(time.Now().UnixNano())
@@ -30,7 +35,10 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		if update.Message.NewChatMembers != nil {
 			for _, newUser := range update.Message.NewChatMembers {
 				captcha := generateCaptcha(config.Config.EmojiCount)
-				userCaptchas[newUser.ID] = captcha
+				userCaptchas[newUser.ID] = captchaInfo{
+					captcha:   captcha,
+					startTime: time.Now(),
+				}
 
 				// Создаем клавиатуру с эмодзи
 				var keyboard [][]tgbotapi.InlineKeyboardButton
@@ -82,7 +90,7 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					}
 				}
 
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Добро пожаловать, %s! Пожалуйста, введите следующую капчу, нажимая на кнопки в правильном порядке:\n%s", newUser.FirstName, captcha))
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(config.Config.WelcomeMessage, newUser.FirstName, config.Config.CaptchaTimeoutMinutes/time.Minute, captcha))
 				msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 				bot.Send(msg)
 
@@ -97,6 +105,9 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					},
 				}
 				bot.Request(restrictChatMember)
+
+				// Запускаем горутину для проверки таймаута
+				go checkCaptchaTimeout(bot, update.Message.Chat.ID, newUser.ID)
 			}
 		}
 	} else if update.CallbackQuery != nil {
@@ -106,10 +117,13 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			userID := update.CallbackQuery.From.ID
 			clickedEmoji := data[2]
 
-			if captcha, ok := userCaptchas[userID]; ok {
-				if strings.HasPrefix(captcha, clickedEmoji) {
-					userCaptchas[userID] = captcha[len(clickedEmoji):]
-					if userCaptchas[userID] == "" {
+			if currentCaptcha, ok := userCaptchas[userID]; ok {
+				if strings.HasPrefix(currentCaptcha.captcha, clickedEmoji) {
+					userCaptchas[userID] = captchaInfo{
+						captcha:   currentCaptcha.captcha[len(clickedEmoji):],
+						startTime: currentCaptcha.startTime,
+					}
+					if userCaptchas[userID].captcha == "" {
 						// Капча пройдена успешно
 						delete(userCaptchas, userID)
 
@@ -125,19 +139,18 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 						}
 						bot.Request(unrestrictChatMember)
 
-						// Используем bot.Request вместо несуществующего метода AnswerCallbackQuery
 						callbackConfig := tgbotapi.CallbackConfig{
 							CallbackQueryID: update.CallbackQuery.ID,
-							Text:            "Капча пройдена успешно! Теперь вы можете писать в чате.",
+							Text:            config.Config.CaptchaSuccessMessage,
 							ShowAlert:       true,
 						}
 						bot.Request(callbackConfig)
 
-						bot.Send(tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, fmt.Sprintf("Пользователь @%s успешно прошел капчу!", update.CallbackQuery.From.UserName)))
+						bot.Send(tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, fmt.Sprintf(config.Config.CaptchaPassedAnnouncement, update.CallbackQuery.From.UserName)))
 					} else {
 						callbackConfig := tgbotapi.CallbackConfig{
 							CallbackQueryID: update.CallbackQuery.ID,
-							Text:            "Правильно! Продолжайте.",
+							Text:            config.Config.CaptchaPartialSuccessMessage,
 							ShowAlert:       false,
 						}
 						bot.Request(callbackConfig)
@@ -145,12 +158,36 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				} else {
 					callbackConfig := tgbotapi.CallbackConfig{
 						CallbackQueryID: update.CallbackQuery.ID,
-						Text:            "Неправильный порядок. Попробуйте еще раз.",
+						Text:            config.Config.CaptchaFailMessage,
 						ShowAlert:       true,
 					}
 					bot.Request(callbackConfig)
 				}
 			}
+		}
+	}
+}
+
+func checkCaptchaTimeout(bot *tgbotapi.BotAPI, chatID int64, userID int64) {
+	time.Sleep(config.Config.CaptchaTimeoutMinutes)
+
+	if _, ok := userCaptchas[userID]; ok {
+		// Если капча все еще не пройдена, кикаем пользователя
+		delete(userCaptchas, userID)
+
+		kickChatMember := tgbotapi.KickChatMemberConfig{
+			ChatMemberConfig: tgbotapi.ChatMemberConfig{
+				ChatID: chatID,
+				UserID: userID,
+			},
+		}
+
+		_, err := bot.Request(kickChatMember)
+		if err != nil {
+			// Если не удалось кикнуть пользователя, отправляем сообщение
+			bot.Send(tgbotapi.NewMessage(chatID, config.Config.KickFailMessage))
+		} else {
+			bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(config.Config.KickSuccessMessage, userID)))
 		}
 	}
 }
