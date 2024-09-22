@@ -3,30 +3,21 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
+	"captcha-bot/config"
 	"captcha-bot/telegram"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Загрузка переменных окружения из файла .env
-	err := godotenv.Load()
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Ошибка при загрузке файла .env")
-	}
-
-	// Получение токена бота из переменных окружения
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Fatal("Токен бота не найден в переменных окружения")
+		log.Fatalf("Ошибка при загрузке конфигурации: %v", err)
 	}
 
 	// Создание нового бота
-	bot, err := tgbotapi.NewBotAPI(botToken)
+	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -45,7 +36,7 @@ func main() {
 	fmt.Println("Бот успешно запущен!")
 
 	// Создание обработчика событий
-	handler := telegram.NewHandler(bot)
+	handler := telegram.NewHandler(bot, cfg.EmojiCount)
 
 	// Обработка обновлений
 	for update := range updates {

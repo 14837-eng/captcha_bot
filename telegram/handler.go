@@ -9,11 +9,12 @@ import (
 )
 
 type Handler struct {
-	bot *tgbotapi.BotAPI
+	bot        *tgbotapi.BotAPI
+	emojiCount int
 }
 
-func NewHandler(bot *tgbotapi.BotAPI) *Handler {
-	return &Handler{bot: bot}
+func NewHandler(bot *tgbotapi.BotAPI, emojiCount int) *Handler {
+	return &Handler{bot: bot, emojiCount: emojiCount}
 }
 
 func (h *Handler) HandleUpdate(update tgbotapi.Update) {
@@ -78,7 +79,7 @@ func (h *Handler) createEmojiKeyboard() tgbotapi.InlineKeyboardMarkup {
 
 	var keyboard [][]tgbotapi.InlineKeyboardButton
 	row := []tgbotapi.InlineKeyboardButton{}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < h.emojiCount && i < len(emojis); i++ {
 		button := tgbotapi.NewInlineKeyboardButtonData(emojis[i], fmt.Sprintf("captcha_%d", i))
 		row = append(row, button)
 	}
