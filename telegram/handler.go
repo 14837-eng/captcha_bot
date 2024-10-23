@@ -154,14 +154,17 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 						// Капча пройдена успешно
 						delete(userCaptchas, userID)
 
-						// Возвращаем права пользователю
+						// Возвращаем полные права пользователю
 						unrestrictChatMember := tgbotapi.RestrictChatMemberConfig{
 							ChatMemberConfig: tgbotapi.ChatMemberConfig{
 								ChatID: update.CallbackQuery.Message.Chat.ID,
 								UserID: userID,
 							},
 							Permissions: &tgbotapi.ChatPermissions{
-								CanSendMessages: true,
+								CanSendMessages:       true,
+								CanSendMediaMessages:  true,
+								CanSendOtherMessages:  true,
+								CanAddWebPagePreviews: true,
 							},
 						}
 						bot.Request(unrestrictChatMember)
